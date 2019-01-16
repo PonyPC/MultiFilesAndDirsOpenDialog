@@ -95,7 +95,6 @@ function TMyFileDialogEvents.OnButtonClicked(const pfdc: IFileDialogCustomize; d
 begin
   if dwIDCtl = dwOpenButtonID then
   begin
-    SelectPaths := TDictionary<String, Boolean>.Create;
     var
       FileDialog: IFileOpenDialog;
     pfdc.QueryInterface(IFileOpenDialog, FileDialog);
@@ -105,6 +104,7 @@ begin
     hr := FileDialog.GetSelectedItems(IResults);
     if hr = S_OK then
     begin
+      SelectPaths := TDictionary<String, Boolean>.Create;
       var
         count: Cardinal;
       IResults.GetCount(count);
@@ -119,14 +119,15 @@ begin
         var
           isFolder: Cardinal;
         hr := IResult.GetAttributes(SFGAO_FOLDER, isFolder);
-        if hr = S_OK then
-          SelectPaths.Add(FileName, True)
-        else
-          SelectPaths.Add(FileName, False);
+        SelectPaths.Add(FileName, hr = S_OK);
       end;
+      FileDialog.Close(S_OK);
+      Result := S_OK;
+    end
+    else
+    begin
+      Result := E_NOTIMPL;
     end;
-    FileDialog.Close(S_OK);
-    Result := S_OK;
   end
   else
   begin
