@@ -168,8 +168,8 @@ begin
     hr := FileDialog.Show(FmxHandleToHwnd(handle));
     if hr = S_OK then
     begin
-      Result := SelectPaths;
-      // SelectPaths.Free;
+      Result := TDictionary<String, Boolean>.Create(SelectPaths);
+      SelectPaths.Free;
     end;
     FileDialog.Unadvise(cookie);
   end;
