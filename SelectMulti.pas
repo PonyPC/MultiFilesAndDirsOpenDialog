@@ -158,7 +158,7 @@ begin
     FileDialog.QueryInterface(IFileDialogCustomize, FileDialogCustomize);
     FileDialogCustomize.AddPushButton(dwOpenButtonID, pchar(ButtonName));
     FileDialogCustomize.MakeProminent(dwOpenButtonID);
-    FileDialog.SetOptions(FOS_ALLOWMULTISELECT or FOS_FORCEFILESYSTEM or FOS_PATHMUSTEXIST or FOS_FILEMUSTEXIST);
+    FileDialog.SetOptions(FOS_ALLOWMULTISELECT or FOS_FORCEFILESYSTEM);
     FileDialog.SetTitle(pchar(TitleName));
     var
     MyFileDialogEvents := TMyFileDialogEvents.Create;
