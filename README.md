@@ -1,5 +1,5 @@
 # MultiFilesAndDirsOpenDialog
-Delphi multi files and dirs open dialog, support fmx and vcl(modify by yourself) above Windows Vista
+Delphi multi files and dirs open dialog, support fmx and vcl(modify by yourself) above Windows Vista,
 In case of WinXP, you can implement SelectDirectory()
 
 Usage:
