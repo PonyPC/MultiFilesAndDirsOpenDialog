@@ -43,7 +43,7 @@ begin
   if hr = S_OK then
   begin
     var
-      FileName: pchar;
+      FileName: PChar;
     IResult.GetDisplayName(SIGDN_FILESYSPATH, FileName);
     SelectPaths.Add(FileName, false);
     Result := S_OK;
@@ -128,7 +128,7 @@ begin
           IResult: IShellItem;
         IResults.GetItemAt(i, IResult);
         var
-          FileName: pchar;
+          FileName: PChar;
         IResult.GetDisplayName(SIGDN_FILESYSPATH, FileName);
         var
           isFolder: Cardinal;
@@ -170,23 +170,19 @@ begin
     var
       FileDialogCustomize: IFileDialogCustomize;
     FileDialog.QueryInterface(IFileDialogCustomize, FileDialogCustomize);
-    FileDialogCustomize.AddPushButton(dwOpenButtonID, pchar(ButtonName));
+    FileDialogCustomize.AddPushButton(dwOpenButtonID, PChar(ButtonName));
     FileDialogCustomize.MakeProminent(dwOpenButtonID);
     FileDialog.SetOptions(FOS_ALLOWMULTISELECT or FOS_FORCEFILESYSTEM);
-    FileDialog.SetTitle(pchar(TitleName));
+    FileDialog.SetTitle(PChar(TitleName));
     var
     MyFileDialogEvents := TMyFileDialogEvents.Create;
     var
       cookie: DWORD;
+    Result := TDictionary<String, Boolean>.Create;
+    SelectPaths := Result;
     FileDialog.Advise(MyFileDialogEvents, cookie);
-    SelectPaths := TDictionary<String, Boolean>.Create;
-    var
-    hr := FileDialog.Show(FmxHandleToHwnd(handle));
-    if hr = S_OK then
-    begin
-      Result := TDictionary<String, Boolean>.Create(SelectPaths);
-    end;
-    SelectPaths.Free;
+    FileDialog.Show(FmxHandleToHwnd(handle));
+    SelectPaths := nil;
     FileDialog.Unadvise(cookie);
   end;
 end;
