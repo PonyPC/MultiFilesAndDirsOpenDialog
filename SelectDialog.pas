@@ -1,10 +1,14 @@
-unit SelectMulti;
+unit SelectDialog;
 
 interface
 
 uses
   System.SysUtils, FMX.Types, System.Classes, System.Generics.Collections,
   WinAPI.Windows, WinAPI.ShlObj, WinAPI.ActiveX, FMX.Platform.Win;
+
+function SelectDirsAndFiles(handle: TWindowHandle; const TitleName, ButtonName: string): TDictionary<String, Boolean>;
+
+implementation
 
 type
   TMyFileDialogEvents = class(TInterfacedObject, IFileDialogEvents, IFileDialogControlEvents)
@@ -24,10 +28,6 @@ type
     function OnControlActivating(const pfdc: IFileDialogCustomize; dwIDCtl: DWORD): HResult; stdcall;
   end;
 
-function SelectDirsAndFiles(handle: TWindowHandle; const TitleName, ButtonName: string): TDictionary<String, Boolean>;
-
-implementation
-
 const
   dwOpenButtonID: DWORD = 1900;
 
@@ -36,7 +36,22 @@ var
 
 function TMyFileDialogEvents.OnFileOk(const pfd: IFileDialog): HResult;
 begin
-  Result := E_NOTIMPL;
+  var
+    IResult: IShellItem;
+  var
+  hr := pfd.GetResult(IResult);
+  if hr = S_OK then
+  begin
+    var
+      FileName: pchar;
+    IResult.GetDisplayName(SIGDN_FILESYSPATH, FileName);
+    SelectPaths.Add(FileName, false);
+    Result := S_OK;
+  end
+  else
+  begin
+    Result := E_NOTIMPL;
+  end;
 end;
 
 function TMyFileDialogEvents.OnFolderChange(const pfd: IFileDialog): HResult;
@@ -104,17 +119,16 @@ begin
     hr := FileDialog.GetSelectedItems(IResults);
     if hr = S_OK then
     begin
-      SelectPaths := TDictionary<String, Boolean>.Create;
       var
         count: Cardinal;
       IResults.GetCount(count);
-      var
-        IResult: IShellItem;
-      var
-        FileName: pchar;
       for var i := 0 to count - 1 do
       begin
+        var
+          IResult: IShellItem;
         IResults.GetItemAt(i, IResult);
+        var
+          FileName: pchar;
         IResult.GetDisplayName(SIGDN_FILESYSPATH, FileName);
         var
           isFolder: Cardinal;
@@ -165,6 +179,7 @@ begin
     var
       cookie: DWORD;
     FileDialog.Advise(MyFileDialogEvents, cookie);
+    SelectPaths := TDictionary<String, Boolean>.Create;
     var
     hr := FileDialog.Show(FmxHandleToHwnd(handle));
     if hr = S_OK then
