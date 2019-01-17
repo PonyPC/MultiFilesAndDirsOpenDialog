@@ -185,8 +185,8 @@ begin
     if hr = S_OK then
     begin
       Result := TDictionary<String, Boolean>.Create(SelectPaths);
-      SelectPaths.Free;
     end;
+    SelectPaths.Free;
     FileDialog.Unadvise(cookie);
   end;
 end;
