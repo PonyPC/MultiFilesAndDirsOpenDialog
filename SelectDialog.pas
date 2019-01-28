@@ -7,6 +7,8 @@ uses
   WinAPI.Windows, WinAPI.ShlObj, WinAPI.ActiveX, FMX.Platform.Win;
 
 function SelectDirsAndFiles(handle: TWindowHandle; const TitleName, ButtonName: string): TDictionary<String, Boolean>;
+function IUnknown_QueryService(punkSite: IUnknown; const SID, IID: TGUID; out Obj): HResult; stdcall;
+{$EXTERNALSYM IUnknown_QueryService}
 
 implementation
 
@@ -28,24 +30,57 @@ type
     function OnControlActivating(const pfdc: IFileDialogCustomize; dwIDCtl: DWORD): HResult; stdcall;
   end;
 
+function IUnknown_QueryService; external 'shlwapi.dll' name 'IUnknown_QueryService';
+
 const
   dwOpenButtonID: DWORD = 1900;
 
 var
   SelectPaths: TDictionary<String, Boolean>;
 
-function TMyFileDialogEvents.OnFileOk(const pfd: IFileDialog): HResult;
+function GetListFromShell(punk: IUnknown): Boolean;
 begin
   var
-    IResult: IShellItem;
+    pfv: IFolderView2;
   var
-  hr := pfd.GetResult(IResult);
+  hr := IUnknown_QueryService(punk, SID_SFolderView, IFolderView2, pfv);
   if hr = S_OK then
   begin
     var
-      FileName: PChar;
-    IResult.GetDisplayName(SIGDN_FILESYSPATH, FileName);
-    SelectPaths.Add(FileName, false);
+      IResults: IShellItemArray;
+    hr := pfv.GetSelection(true, IResults);
+    if hr = S_OK then
+    begin
+      var
+        count: Cardinal;
+      IResults.GetCount(count);
+      if count > 0 then
+      begin
+        for var i := 0 to count - 1 do
+        begin
+          var
+            IResult: IShellItem;
+          IResults.GetItemAt(i, IResult);
+          var
+            FileName: PChar;
+          IResult.GetDisplayName(SIGDN_FILESYSPATH, FileName);
+          var
+            isFolder: Cardinal;
+          hr := IResult.GetAttributes(SFGAO_FOLDER, isFolder);
+          SelectPaths.Add(FileName, hr = S_OK);
+        end;
+        Result := true;
+        Exit;
+      end;
+    end;
+  end;
+  Result := false;
+end;
+
+function TMyFileDialogEvents.OnFileOk(const pfd: IFileDialog): HResult;
+begin
+  if GetListFromShell(pfd) then
+  begin
     Result := S_OK;
   end
   else
@@ -110,43 +145,17 @@ function TMyFileDialogEvents.OnButtonClicked(const pfdc: IFileDialogCustomize; d
 begin
   if dwIDCtl = dwOpenButtonID then
   begin
-    var
-      FileDialog: IFileOpenDialog;
-    pfdc.QueryInterface(IFileOpenDialog, FileDialog);
-    var
-      IResults: IShellItemArray;
-    var
-    hr := FileDialog.GetSelectedItems(IResults);
-    if hr = S_OK then
+    if GetListFromShell(pfdc) then
     begin
       var
-        count: Cardinal;
-      IResults.GetCount(count);
-      for var i := 0 to count - 1 do
-      begin
-        var
-          IResult: IShellItem;
-        IResults.GetItemAt(i, IResult);
-        var
-          FileName: PChar;
-        IResult.GetDisplayName(SIGDN_FILESYSPATH, FileName);
-        var
-          isFolder: Cardinal;
-        hr := IResult.GetAttributes(SFGAO_FOLDER, isFolder);
-        SelectPaths.Add(FileName, hr = S_OK);
-      end;
+        FileDialog: IFileDialog;
+      pfdc.QueryInterface(IFileDialog, FileDialog);
       FileDialog.Close(S_OK);
       Result := S_OK;
-    end
-    else
-    begin
-      Result := E_NOTIMPL;
+      Exit;
     end;
-  end
-  else
-  begin
-    Result := E_NOTIMPL;
   end;
+  Result := E_NOTIMPL;
 end;
 
 function TMyFileDialogEvents.OnCheckButtonToggled(const pfdc: IFileDialogCustomize; dwIDCtl: DWORD;
@@ -168,19 +177,18 @@ begin
       FileDialog: IFileOpenDialog;
     CoCreateInstance(CLSID_FileOpenDialog, nil, CLSCTX_INPROC_SERVER, IFileOpenDialog, FileDialog);
     var
+      cookie: DWORD;
+    var
+    MyFileDialogEvents := TMyFileDialogEvents.Create;
+    FileDialog.Advise(MyFileDialogEvents, cookie);
+    FileDialog.SetOptions(FOS_ALLOWMULTISELECT or FOS_FORCEFILESYSTEM);
+    var
       FileDialogCustomize: IFileDialogCustomize;
     FileDialog.QueryInterface(IFileDialogCustomize, FileDialogCustomize);
     FileDialogCustomize.AddPushButton(dwOpenButtonID, PChar(ButtonName));
-    FileDialogCustomize.MakeProminent(dwOpenButtonID);
-    FileDialog.SetOptions(FOS_ALLOWMULTISELECT or FOS_FORCEFILESYSTEM);
     FileDialog.SetTitle(PChar(TitleName));
-    var
-    MyFileDialogEvents := TMyFileDialogEvents.Create;
-    var
-      cookie: DWORD;
     Result := TDictionary<String, Boolean>.Create;
     SelectPaths := Result;
-    FileDialog.Advise(MyFileDialogEvents, cookie);
     FileDialog.Show(FmxHandleToHwnd(handle));
     SelectPaths := nil;
     FileDialog.Unadvise(cookie);
