@@ -3,7 +3,7 @@ unit SelectDialog;
 interface
 
 uses
-  System.SysUtils, FMX.Types, System.Classes, System.Generics.Collections,
+  System.SysUtils, FMX.Types, System.Classes, System.Generics.Collections, IOUtils,
   WinAPI.Windows, WinAPI.ShlObj, WinAPI.ActiveX, FMX.Platform.Win;
 
 function SelectDirsAndFiles(handle: TWindowHandle; const TitleName, ButtonName: string): TDictionary<String, Boolean>;
@@ -64,10 +64,7 @@ begin
           var
             FileName: PChar;
           IResult.GetDisplayName(SIGDN_FILESYSPATH, FileName);
-          var
-            isFolder: Cardinal;
-          hr := IResult.GetAttributes(SFGAO_FOLDER, isFolder);
-          SelectPaths.Add(FileName, hr = S_OK);
+          SelectPaths.Add(FileName, TDirectory.Exists(FileName));
         end;
         Result := true;
         Exit;
